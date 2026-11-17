@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "DayPilot",
+    "slug": "daypilot",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#F5F6F0"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.naveenmanickam.daypilot"
+    },
+    "android": {
+      "package": "com.naveenmanickam.daypilot",
+      "adaptiveIcon": {
+        "backgroundColor": "#F5F6F0"
+      }
+    }
+  }
+}
