@@ -134,7 +134,7 @@ function AppInner() {
     <View style={styles.shortcutRow}>
       <Pressable onPress={()=>setTaskSearch("")} style={styles.shortcut}><View style={[styles.shortcutIcon,{backgroundColor:"#FCE5EE"}]}><Text style={{fontSize:19,color:"#D94B7A"}}>✓</Text></View><Text style={{color:c.text,fontSize:11,fontWeight:"700",marginTop:6}}>To-Do</Text></Pressable>
       <Pressable onPress={()=>setTab("Progress")} style={styles.shortcut}><View style={[styles.shortcutIcon,{backgroundColor:"#FFF2CC"}]}><Text style={{fontSize:19,color:"#D4A72C"}}>▥</Text></View><Text style={{color:c.text,fontSize:11,fontWeight:"700",marginTop:6}}>Progress</Text></Pressable>
-      <Pressable onPress={()=>setTaskSearch("")} style={styles.shortcut}><View style={[styles.shortcutIcon,{backgroundColor:"#DDF5E9"}]}><Text style={{fontSize:19,color:"#32A879"}}>✓</Text></View><Text style={{color:c.text,fontSize:11,fontWeight:"700",marginTop:6}}>Done</Text><Text style={{color:c.muted,fontSize:10}}>{completedTaskCount}</Text></Pressable>
+      <Pressable onPress={()=>setTab("Progress")} style={styles.shortcut}><View style={[styles.shortcutIcon,{backgroundColor:"#DDF5E9"}]}><Text style={{fontSize:19,color:"#32A879"}}>✓</Text></View><Text style={{color:c.text,fontSize:11,fontWeight:"700",marginTop:6}}>Done</Text><Text style={{color:c.muted,fontSize:10}}>{completedTaskCount}</Text></Pressable>
     </View>
     <View style={styles.sectionRow}>{label("Habits")}<Pressable onPress={()=>openModal("habit")}><Text style={{color:c.green,fontWeight:"700"}}>+ Add</Text></Pressable></View>
     {pendingHabits.length===0 ? card(<Text style={{color:c.green,fontWeight:"600"}}>All habits completed! 🎉</Text>) :
@@ -152,7 +152,7 @@ function AppInner() {
       <View style={styles.sectionRow}><Text style={{color:i%4===2?"#51472B":"#FFFFFF",fontSize:11,fontWeight:"700",opacity:.85}}>{t.date<today?"OVERDUE":"TASK"}</Text><Pressable onPress={()=>toggleTask(t.id)} style={styles.referenceCheck}><Text style={{color:"#FFFFFF",fontWeight:"800"}}>✓</Text></Pressable></View>
       <Text numberOfLines={2} style={{color:i%4===2?"#342F20":"#FFFFFF",fontSize:16,fontWeight:"800",marginTop:10}}>{t.title}</Text>
       <Text style={{color:i%4===2?"#6A624B":"rgba(255,255,255,0.82)",fontSize:11,marginTop:8}}>{t.priority} priority</Text>
-      <View style={{height:4,borderRadius:4,backgroundColor:i%4===2?"rgba(80,70,40,.16)":"rgba(255,255,255,.25)",marginTop:18}}><View style={{height:4,width:"34%",borderRadius:4,backgroundColor:i%4===2?"#8A7B4A":"#FFFFFF"}}/></View>
+      
     </View>)}</ScrollView>}
     <View style={[styles.quote,{backgroundColor:c.soft,marginTop:14}]}>
       <Text style={{color:c.green,fontSize:11,fontWeight:"800",marginBottom:5}}>A THOUGHT FOR TODAY</Text>
