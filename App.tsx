@@ -65,6 +65,7 @@ function AppInner() {
   const [nameDraft, setNameDraft] = useState("");
   const [showName, setShowName] = useState(false);
   const [monthOffset, setMonthOffset] = useState(0);
+  const [taskSearch, setTaskSearch] = useState("");
 
   useEffect(() => {
     AsyncStorage.getItem(KEY).then(raw => {
@@ -78,7 +79,9 @@ function AppInner() {
 
   const c = store.dark ? palette.dark : palette.light;
   const today = todayKey();
-  const todayTasks = store.tasks.filter(t => !t.done && (selectedDate === today ? t.date <= selectedDate : t.date === selectedDate)).sort((a,b)=>a.date.localeCompare(b.date));
+  const todayTasks = store.tasks.filter(t => !t.done && (selectedDate === today ? t.date <= selectedDate : t.date === selectedDate) && t.title.toLowerCase().includes(taskSearch.toLowerCase())).sort((a,b)=>a.date.localeCompare(b.date));
+  const monthTaskCount = store.tasks.filter(t => t.date.slice(0,7) === today.slice(0,7)).length;
+  const completedTaskCount = store.tasks.filter(t => t.done).length;
   const doneHabits = store.habits.filter(h => h.doneDates.includes(selectedDate));
   const pendingHabits = store.habits.filter(h => !h.doneDates.includes(selectedDate));
   const monthDate = new Date();
@@ -118,33 +121,44 @@ function AppInner() {
   const renderDay = () => <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <View style={styles.topRow}>
       <View style={{flex:1}}>
-        <Text style={[styles.eyebrow,{color:c.muted}]}>{dateLabel(new Date(selectedDate+"T12:00:00"))}</Text>
-        <Text style={[styles.greeting,{color:c.text}]}>{greeting()}{store.name ? `, ${store.name}` : ""}.</Text>
+        <Text style={[styles.eyebrow,{color:c.muted}]}>{greeting()}{store.name ? ", " + store.name : ""}</Text>
+        <Text style={[styles.greeting,{color:c.text}]}>You have {monthTaskCount} tasks this month 👏</Text>
       </View>
       <Pressable onPress={()=>{setNameDraft(store.name);setShowName(true)}} style={[styles.avatar,{backgroundColor:c.soft}]}><Text style={{fontSize:19}}>☺</Text></Pressable>
     </View>
-    <View style={[styles.quote,{backgroundColor:c.soft}]}>
-      <Text style={{color:c.green,fontSize:13,fontWeight:"700",marginBottom:5}}>A THOUGHT FOR TODAY</Text>
-      <Text style={{color:c.text,fontSize:15,lineHeight:22,fontWeight:"500"}}>“{quotes[new Date().getDate()%quotes.length]}”</Text>
+    <View style={[styles.searchBox,{backgroundColor:c.card,borderColor:c.line}]}>
+      <Text style={{fontSize:17,color:c.muted,marginRight:9}}>⌕</Text>
+      <TextInput value={taskSearch} onChangeText={setTaskSearch} placeholder="Search a task..." placeholderTextColor={c.muted} style={{flex:1,color:c.text,paddingVertical:0,fontSize:14}} />
+      {taskSearch.length>0 && <Pressable onPress={()=>setTaskSearch("")}><Text style={{color:c.muted}}>✕</Text></Pressable>}
     </View>
+    <View style={styles.shortcutRow}>
+      <Pressable onPress={()=>setTaskSearch("")} style={styles.shortcut}><View style={[styles.shortcutIcon,{backgroundColor:"#FCE5EE"}]}><Text style={{fontSize:19,color:"#D94B7A"}}>✓</Text></View><Text style={{color:c.text,fontSize:11,fontWeight:"700",marginTop:6}}>To-Do</Text></Pressable>
+      <Pressable onPress={()=>setTab("Progress")} style={styles.shortcut}><View style={[styles.shortcutIcon,{backgroundColor:"#FFF2CC"}]}><Text style={{fontSize:19,color:"#D4A72C"}}>▥</Text></View><Text style={{color:c.text,fontSize:11,fontWeight:"700",marginTop:6}}>Progress</Text></Pressable>
+      <Pressable onPress={()=>setTaskSearch("")} style={styles.shortcut}><View style={[styles.shortcutIcon,{backgroundColor:"#DDF5E9"}]}><Text style={{fontSize:19,color:"#32A879"}}>✓</Text></View><Text style={{color:c.text,fontSize:11,fontWeight:"700",marginTop:6}}>Done</Text><Text style={{color:c.muted,fontSize:10}}>{completedTaskCount}</Text></Pressable>
+    </View>
+    <View style={styles.sectionRow}>{label("Habits")}<Pressable onPress={()=>openModal("habit")}><Text style={{color:c.green,fontWeight:"700"}}>+ Add</Text></Pressable></View>
+    {pendingHabits.length===0 ? card(<Text style={{color:c.green,fontWeight:"600"}}>All habits completed! 🎉</Text>) :
+      <View style={styles.habitGrid}>{pendingHabits.map(h=><Pressable key={h.id} onPress={()=>toggleHabit(h.id)} style={[styles.habitCard,{backgroundColor:h.colour,borderColor:h.colour}]}>
+        <Text style={{fontSize:24}}>{h.icon}</Text><Text style={{color:"#26352A",fontWeight:"700",marginTop:12}}>{h.title}</Text><Text style={{color:"#526458",fontSize:12,marginTop:4}}>Tap to complete ○</Text>
+      </Pressable>)}</View>}
+    {doneHabits.length>0 && <Text style={{color:c.muted,fontSize:12,marginTop:0,marginBottom:16}}>{doneHabits.length} completed today</Text>}
+    <View style={styles.sectionRow}>{label("Today's Tasks")}<Pressable onPress={()=>openModal("task")}><Text style={{color:c.green,fontWeight:"700"}}>+ Add Task</Text></Pressable></View>
     <View style={styles.dateStrip}>
       <Pressable onPress={()=>{const d=new Date(selectedDate+"T12:00:00");d.setDate(d.getDate()-1);setSelectedDate(todayKeyFrom(d));}}><Text style={[styles.arrow,{color:c.green}]}>‹</Text></Pressable>
       <Pressable onPress={()=>setSelectedDate(today)}><Text style={[styles.dateCenter,{color:c.text}]}>{selectedDate===today?"Today":new Date(selectedDate+"T12:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric"})}</Text></Pressable>
       <Pressable onPress={()=>{const d=new Date(selectedDate+"T12:00:00");d.setDate(d.getDate()+1);setSelectedDate(todayKeyFrom(d));}}><Text style={[styles.arrow,{color:c.green}]}>›</Text></Pressable>
     </View>
-    {label("Habits")}
-    {pendingHabits.length===0 ? card(<Text style={{color:c.green,fontWeight:"600"}}>All habits completed! 🎉</Text>) :
-      <View style={styles.habitGrid}>{pendingHabits.map(h=><Pressable key={h.id} onPress={()=>toggleHabit(h.id)} style={[styles.habitCard,{backgroundColor:h.colour,borderColor:h.colour}]}>
-        <Text style={{fontSize:24}}>{h.icon}</Text><Text style={{color:"#26352A",fontWeight:"700",marginTop:12}}>{h.title}</Text><Text style={{color:"#526458",fontSize:12,marginTop:4}}>Tap to complete ○</Text>
-      </Pressable>)}</View>}
-    {doneHabits.length>0 && <Text style={{color:c.muted,fontSize:12,marginTop:8}}>{doneHabits.length} completed today</Text>}
-    <View style={styles.sectionRow}>{label("Tasks")}<Pressable onPress={()=>openModal("task")}><Text style={{color:c.green,fontWeight:"700"}}>+ Add</Text></Pressable></View>
-    {todayTasks.length===0 ? card(<Text style={{color:c.muted}}>All tasks completed! 🎉</Text>) : todayTasks.map(t=>card(<View key={t.id} style={styles.taskRow}>
-      <Pressable onPress={()=>toggleTask(t.id)} style={[styles.check,{borderColor:c.green}]} />
-      <View style={{flex:1}}><Text style={{color:c.text,fontWeight:"600"}}>{t.title}</Text><Text style={{color:t.date<today?c.danger:c.muted,fontSize:12,marginTop:3}}>{t.date<today?"Overdue":t.priority+" priority"}</Text></View>
-      <Pressable onPress={()=>toggleTask(t.id)}><Text style={{color:c.muted,fontSize:18}}>✓</Text></Pressable>
-    </View>,{marginBottom:8}))}
-    <Text style={{color:c.muted,fontSize:12,marginTop:8}}>Your information is saved on this device.</Text>
+    {todayTasks.length===0 ? card(<Text style={{color:c.muted}}>{taskSearch?"No matching tasks.":"All tasks completed! 🎉"}</Text>) : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:12,paddingBottom:8}}>{todayTasks.map((t,i)=><View key={t.id} style={[styles.referenceTaskCard,{backgroundColor:["#5148D8","#D94B78","#F3E7B9","#DDF1E6"][i%4]}]}>
+      <View style={styles.sectionRow}><Text style={{color:i%4===2?"#51472B":"#FFFFFF",fontSize:11,fontWeight:"700",opacity:.85}}>{t.date<today?"OVERDUE":"TASK"}</Text><Pressable onPress={()=>toggleTask(t.id)} style={styles.referenceCheck}><Text style={{color:"#FFFFFF",fontWeight:"800"}}>✓</Text></Pressable></View>
+      <Text numberOfLines={2} style={{color:i%4===2?"#342F20":"#FFFFFF",fontSize:16,fontWeight:"800",marginTop:10}}>{t.title}</Text>
+      <Text style={{color:i%4===2?"#6A624B":"rgba(255,255,255,0.82)",fontSize:11,marginTop:8}}>{t.priority} priority</Text>
+      <View style={{height:4,borderRadius:4,backgroundColor:i%4===2?"rgba(80,70,40,.16)":"rgba(255,255,255,.25)",marginTop:18}}><View style={{height:4,width:"34%",borderRadius:4,backgroundColor:i%4===2?"#8A7B4A":"#FFFFFF"}}/></View>
+    </View>)}</ScrollView>}
+    <View style={[styles.quote,{backgroundColor:c.soft,marginTop:14}]}>
+      <Text style={{color:c.green,fontSize:11,fontWeight:"800",marginBottom:5}}>A THOUGHT FOR TODAY</Text>
+      <Text style={{color:c.text,fontSize:14,lineHeight:21,fontWeight:"500"}}>“{quotes[new Date().getDate()%quotes.length]}”</Text>
+    </View>
+    <Text style={{color:c.muted,fontSize:12,marginTop:4}}>Your information is saved on this device.</Text>
   </ScrollView>;
 
   const renderPlanner = () => <ScrollView contentContainerStyle={styles.content}>
@@ -218,6 +232,12 @@ export default function App() { return <SafeAreaProvider><AppInner/></SafeAreaPr
 const styles = StyleSheet.create({
   safe:{flex:1}, content:{paddingHorizontal:20,paddingTop:18,paddingBottom:28},
   topRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:18},
+  searchBox:{height:48,borderRadius:15,borderWidth:1,flexDirection:"row",alignItems:"center",paddingHorizontal:14,marginBottom:18},
+  shortcutRow:{flexDirection:"row",justifyContent:"space-around",marginBottom:22},
+  shortcut:{alignItems:"center",minWidth:72},
+  shortcutIcon:{width:48,height:48,borderRadius:16,alignItems:"center",justifyContent:"center"},
+  referenceTaskCard:{width:208,minHeight:164,borderRadius:18,padding:15,justifyContent:"space-between"},
+  referenceCheck:{width:26,height:26,borderRadius:13,backgroundColor:"rgba(255,255,255,0.22)",alignItems:"center",justifyContent:"center"},
   eyebrow:{fontSize:11,fontWeight:"800",letterSpacing:1.2,textTransform:"uppercase"},
   greeting:{fontSize:27,fontWeight:"800",letterSpacing:-0.7,marginTop:5},
   avatar:{width:42,height:42,borderRadius:21,alignItems:"center",justifyContent:"center"},
