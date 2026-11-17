@@ -10,8 +10,9 @@ type Tab = "My Day" | "Planner" | "Notes" | "Progress";
 type Task = { id: string; title: string; date: string; done: boolean; priority: "High"|"Medium"|"Low"; note?: string };
 type Habit = { id: string; title: string; doneDates: string[]; icon: string; colour: string };
 type Note = { id: string; title: string; body: string; updatedAt: string };
+type DateNote = { id: string; date: string; body: string; updatedAt: string };
 type EventItem = { id: string; title: string; date: string; start: string; end: string; location?: string; category: string };
-type Store = { name: string; tasks: Task[]; habits: Habit[]; notes: Note[]; events: EventItem[]; dark: boolean };
+type Store = { name: string; tasks: Task[]; habits: Habit[]; notes: Note[]; dateNotes: DateNote[]; events: EventItem[]; dark: boolean };
 
 const KEY = "daypilot.local.v1";
 const todayKey = () => {
@@ -28,6 +29,7 @@ const initial: Store = {
     { id: "h3", title: "Walk", icon: "🚶", colour: "#E6E8D8", doneDates: [] }
   ],
   notes: [],
+  dateNotes: [],
   events: [],
   dark: false
 };
@@ -54,7 +56,8 @@ function AppInner() {
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<Tab>("My Day");
   const [selectedDate, setSelectedDate] = useState(todayKey());
-  const [modal, setModal] = useState<"task"|"habit"|"event"|"note"|"quick"|null>(null);
+  const [modal, setModal] = useState<"task"|"habit"|"event"|"note"|"dateNote"|"quick"|null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string|null>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [date, setDate] = useState(todayKey());
@@ -75,7 +78,7 @@ function AppInner() {
 
   const c = store.dark ? palette.dark : palette.light;
   const today = todayKey();
-  const todayTasks = store.tasks.filter(t => t.date === selectedDate && !t.done);
+  const todayTasks = store.tasks.filter(t => !t.done && (selectedDate === today ? t.date <= selectedDate : t.date === selectedDate)).sort((a,b)=>a.date.localeCompare(b.date));
   const doneHabits = store.habits.filter(h => h.doneDates.includes(selectedDate));
   const pendingHabits = store.habits.filter(h => !h.doneDates.includes(selectedDate));
   const monthDate = new Date();
@@ -89,15 +92,20 @@ function AppInner() {
   }, [monthOffset]);
 
   const update = (patch: Partial<Store>) => setStore(s => ({...s,...patch}));
-  const openModal = (kind: "task"|"habit"|"event"|"note") => {
-    setTitle(""); setBody(""); setDate(selectedDate); setPriority("Medium"); setModal(kind);
+  const openModal = (kind: "task"|"habit"|"event"|"note"|"dateNote") => {
+    setTitle(""); setBody(""); setDate(selectedDate); setPriority("Medium"); setEditingNoteId(null); setModal(kind);
+  };
+  const editNote = (note: Note) => {
+    setTitle(note.title); setBody(note.body); setEditingNoteId(note.id); setModal("note");
   };
   const save = () => {
     if (!title.trim()) { Alert.alert("Add a title", "Please enter a title before saving."); return; }
     if (modal === "task") update({tasks:[...store.tasks,{id:uid(),title:title.trim(),date,done:false,priority,note:body.trim()}]});
     if (modal === "habit") update({habits:[...store.habits,{id:uid(),title:title.trim(),icon:"🌱",colour:"#E6EEE5",doneDates:[]}]});
-    if (modal === "note") update({notes:[{id:uid(),title:title.trim(),body:body.trim(),updatedAt:new Date().toISOString()},...store.notes]});
+    if (modal === "note") update({notes:editingNoteId ? store.notes.map(n=>n.id===editingNoteId?{...n,title:title.trim(),body:body.trim(),updatedAt:new Date().toISOString()}:n) : [{id:uid(),title:title.trim(),body:body.trim(),updatedAt:new Date().toISOString()},...store.notes]});
+    if (modal === "dateNote") update({dateNotes:[...store.dateNotes.filter(n=>n.date!==date),{id:uid(),date,body:body.trim(),updatedAt:new Date().toISOString()}]});
     if (modal === "event") update({events:[...store.events,{id:uid(),title:title.trim(),date,start:"09:00",end:"10:00",location:body.trim(),category:"Personal"}]});
+    setEditingNoteId(null);
     setModal(null);
   };
   const toggleTask = (id:string) => update({tasks:store.tasks.map(t=>t.id===id?{...t,done:!t.done}:t)});
@@ -148,14 +156,14 @@ function AppInner() {
     </>)}
     <View style={styles.sectionRow}>{label("Selected date")}<Text style={{color:c.muted}}>{selectedDate}</Text></View>
     {store.events.filter(e=>e.date===selectedDate).length===0 ? card(<Text style={{color:c.muted}}>No events planned for this date.</Text>) : store.events.filter(e=>e.date===selectedDate).map(e=>card(<View key={e.id}><Text style={{color:c.text,fontWeight:"700"}}>{e.title}</Text><Text style={{color:c.muted,marginTop:5}}>{e.start} – {e.end} · {e.category}</Text>{e.location?<Text style={{color:c.muted,fontSize:12,marginTop:3}}>{e.location}</Text>:null}</View>))}
-    <View style={styles.sectionRow}>{label("Date-based note")}<Pressable onPress={()=>openModal("note")}><Text style={{color:c.green,fontWeight:"700"}}>+ Note</Text></Pressable></View>
-    <Text style={{color:c.muted,fontSize:13}}>Date-based notes will be added in the next iteration.</Text>
+    <View style={styles.sectionRow}>{label("Date-based note")}<Pressable onPress={()=>{const n=store.dateNotes.find(x=>x.date===selectedDate);setTitle("");setBody(n?.body||"");setDate(selectedDate);setModal("dateNote");}}><Text style={{color:c.green,fontWeight:"700"}}>{store.dateNotes.some(n=>n.date===selectedDate)?"Edit note":"+ Note"}</Text></Pressable></View>
+    {store.dateNotes.find(n=>n.date===selectedDate) ? card(<Text style={{color:c.text,lineHeight:21}}>{store.dateNotes.find(n=>n.date===selectedDate)?.body}</Text>) : <Text style={{color:c.muted,fontSize:13}}>Add a note for this date.</Text>}
   </ScrollView>;
 
   const renderNotes = () => <ScrollView contentContainerStyle={styles.content}>
     <View style={styles.topRow}><View><Text style={[styles.eyebrow,{color:c.muted}]}>YOUR THOUGHTS</Text><Text style={[styles.greeting,{color:c.text}]}>My Notes</Text></View><Pressable onPress={()=>openModal("note")}><Text style={{color:c.green,fontWeight:"700"}}>+ New note</Text></Pressable></View>
     {store.notes.length===0 ? card(<View style={{alignItems:"center",padding:20}}><Text style={{fontSize:32}}>✎</Text><Text style={{color:c.text,fontWeight:"700",marginTop:10}}>No notes yet</Text><Text style={{color:c.muted,marginTop:5}}>Save ideas, reminders and thoughts here.</Text></View>) :
-      store.notes.map(n=>card(<View key={n.id}><View style={styles.sectionRow}><Text style={{color:c.text,fontWeight:"700",fontSize:16,flex:1}}>{n.title}</Text><Pressable onPress={()=>deleteNote(n.id)}><Text style={{color:c.danger}}>Delete</Text></Pressable></View><Text style={{color:c.muted,lineHeight:21,marginTop:8}}>{n.body}</Text></View>,{marginBottom:10}))}
+      store.notes.map(n=>card(<View key={n.id}><View style={styles.sectionRow}><Text style={{color:c.text,fontWeight:"700",fontSize:16,flex:1}}>{n.title}</Text><View style={{flexDirection:"row",gap:14}}><Pressable onPress={()=>editNote(n)}><Text style={{color:c.green}}>Edit</Text></Pressable><Pressable onPress={()=>deleteNote(n.id)}><Text style={{color:c.danger}}>Delete</Text></Pressable></View></View><Text style={{color:c.muted,lineHeight:21,marginTop:8}}>{n.body}</Text></View>,{marginBottom:10}))}
   </ScrollView>;
 
   const renderProgress = () => {
@@ -188,12 +196,12 @@ function AppInner() {
             <View style={styles.sectionRow}><Text style={[styles.sectionTitle,{color:c.text}]}>Quick add</Text><Pressable onPress={()=>setModal(null)}><Text style={{color:c.muted}}>Close</Text></Pressable></View>
             <View style={styles.quickGrid}>{[["✓","Task","task"],["🌱","Habit","habit"],["▦","Event","event"],["✎","Note","note"]].map(([icon,name,key])=><Pressable key={key} onPress={()=>openModal(key as any)} style={[styles.quickItem,{backgroundColor:c.soft}]}><Text style={{fontSize:25}}>{icon}</Text><Text style={{color:c.text,fontWeight:"600",marginTop:8}}>{name}</Text></Pressable>)}</View>
           </> : <>
-            <View style={styles.sectionRow}><Text style={[styles.sectionTitle,{color:c.text}]}>{modal==="task"?"New task":modal==="habit"?"New habit":modal==="event"?"New event":"New note"}</Text><Pressable onPress={()=>setModal(null)}><Text style={{color:c.muted}}>Cancel</Text></Pressable></View>
+            <View style={styles.sectionRow}><Text style={[styles.sectionTitle,{color:c.text}]}>{modal==="task"?"New task":modal==="habit"?"New habit":modal==="event"?"New event":modal==="dateNote"?"Date-based note":editingNoteId?"Edit note":"New note"}</Text><Pressable onPress={()=>setModal(null)}><Text style={{color:c.muted}}>Cancel</Text></Pressable></View>
             <Text style={[styles.fieldLabel,{color:c.muted}]}>TITLE</Text>
             <TextInput value={title} onChangeText={setTitle} placeholder="Give it a name" placeholderTextColor={c.muted} style={[styles.input,{color:c.text,borderColor:c.line}]} />
             {modal==="task"||modal==="event" ? <><Text style={[styles.fieldLabel,{color:c.muted}]}>DATE (YYYY-MM-DD)</Text><TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor={c.muted} style={[styles.input,{color:c.text,borderColor:c.line}]} /></>:null}
             {modal==="task" ? <><Text style={[styles.fieldLabel,{color:c.muted}]}>PRIORITY</Text><View style={styles.pillRow}>{(["Low","Medium","High"] as const).map(p=>pill(p,priority===p,()=>setPriority(p)))}</View></>:null}
-            {modal==="task"||modal==="note"||modal==="event" ? <><Text style={[styles.fieldLabel,{color:c.muted}]}>{modal==="event"?"LOCATION / DETAILS":"NOTES"}</Text><TextInput value={body} onChangeText={setBody} multiline placeholder="Add more details (optional)" placeholderTextColor={c.muted} style={[styles.input,{color:c.text,borderColor:c.line,minHeight:90,textAlignVertical:"top"}]} /></>:null}
+            {modal==="task"||modal==="note"||modal==="event"||modal==="dateNote" ? <><Text style={[styles.fieldLabel,{color:c.muted}]}>{modal==="event"?"LOCATION / DETAILS":modal==="dateNote"?"NOTE FOR "+date:"NOTES"}</Text><TextInput value={body} onChangeText={setBody} multiline placeholder="Add more details (optional)" placeholderTextColor={c.muted} style={[styles.input,{color:c.text,borderColor:c.line,minHeight:90,textAlignVertical:"top"}]} /></>:null}
             <Pressable onPress={save} style={[styles.saveButton,{backgroundColor:c.green}]}><Text style={{color:"#fff",fontWeight:"700",fontSize:15}}>Save</Text></Pressable>
           </>}
         </View>
