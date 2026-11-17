@@ -152,7 +152,7 @@ private fun DayPilotApp(context: Context) {
     val today = LocalDate.now()
     val dateKey = selectedDate.toString()
     val visibleTasks = data.tasks.filter {
-        !it.done && it.date <= dateKey && it.title.contains(search, ignoreCase = true)
+        !it.done && (if (selectedDate == today) it.date <= dateKey else it.date == dateKey) && it.title.contains(search, ignoreCase = true)
     }.sortedBy { it.date }
     val pendingHabits = data.habits.filter { dateKey !in it.doneDates }
 
